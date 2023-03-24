@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
 const authCheck = require('../midware/authCheck')
-const { checkExistingEmail, createUser, updateLastLogon, findById } = require('../queries')
+const { findByEmail, createUser, updateLastLogon, findById } = require('../queries')
 
 router.post(
     '/signup',
@@ -11,9 +11,6 @@ router.post(
         try {
             const { email, password } = req.body
             if (!email || !password) return res.status(400).json({ msg: 'Not all fields have been entered.' })
-
-            if (await checkExistingEmail(email))
-                return res.status(400).json({ msg: 'An account with this email already exists.' })
 
             const salt = await bcrypt.genSalt()
             req._passwordHash = await bcrypt.hash(password, salt)
@@ -32,7 +29,7 @@ router.post('/signin', async (req, res) => {
             return res.status(400).json({ msg: 'Not all fields have been entered.' })
         }
 
-        const user = await checkExistingEmail(email)
+        const user = await findByEmail(email)
         if (!user) {
             return res.status(400).json({ msg: 'No account with this email has been registered.' })
         }

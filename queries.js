@@ -11,7 +11,7 @@ const getUsers = async (_, res) => {
     res.status(200).json(results.rows.map(({ password, ...result }) => result))
 }
 
-const checkExistingEmail = async (email) => {
+const findByEmail = async (email) => {
     const results = await pool.query('SELECT * FROM users WHERE email = $1', [email])
     return results?.rows[0]
 }
@@ -26,14 +26,20 @@ const updateLastLogon = async (id) => {
 }
 
 const createUser = async (req, res) => {
-    const { name = null, email } = req.body
-    const results = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *', [
-        name,
-        email,
-        req._passwordHash,
-    ])
-    const { password, ...user } = results.rows[0]
-    res.status(201).json(user)
+    try {
+        const { name = null, email } = req.body
+        const results = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *', [
+            name,
+            email,
+            req._passwordHash,
+        ])
+        const { password, ...user } = results.rows[0]
+        res.status(201).json(user)
+    } catch (error) {
+        if (error.severity === 'ERROR' && error.constraint === 'users_email_key') {
+            return res.status(400).json({ msg: 'An account with this email already exists.' })
+        }
+    }
 }
 
 const blockUsers = async (req, res) => {
@@ -55,7 +61,7 @@ const deleteUsers = async (req, res) => {
 }
 
 module.exports = {
-    checkExistingEmail,
+    findByEmail,
     findById,
     updateLastLogon,
     getUsers,
